@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Filerobot Designer</title>
+  <link rel="stylesheet" href="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.css">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; }
+    #editor_container { width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="editor_container"></div>
+
+  <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const imageUrl = params.get('image');
+
+    const { TABS, TOOLS } = window.FilerobotImageEditor;
+    const editor = new window.FilerobotImageEditor(document.getElementById('editor_container'), {
+      source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
+      onSave: (imageData) => {
+        fetch(window.opener.fd_ajax.ajax_url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            action: 'fd_save_design',
+            nonce: window.opener.fd_ajax.nonce,
+            image: imageData.imageBase64
+          })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            window.opener.postMessage({ type: 'designSaved', url: data.data.url }, location.origin);
+            window.close();
+          } else {
+            alert('Chyba pri ukladaní.');
+          }
+        });
+      },
+      onClose: () => {
+        window.close();
+      },
+      tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
+      defaultTabId: TABS.ANNOTATE,
+      defaultToolId: TOOLS.TEXT
+    });
+
+    editor.render();
+  </script>
+</body>
+</html>
