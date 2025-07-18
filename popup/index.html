@@ -10,7 +10,8 @@
   </style>
 </head>
 <body>
-  <select id="fd-category" style="position:absolute;z-index:1000;top:10px;left:10px;"></select>
+  <div id="fd-category-picker" class="fd-category-picker" style="position:absolute;z-index:1000;top:10px;left:10px;display:flex;gap:5px;"></div>
+  <select id="fd-category" style="position:absolute;z-index:1000;top:10px;left:10px;opacity:0;pointer-events:none;"></select>
   <div id="editor_container"></div>
 
   <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
@@ -20,19 +21,48 @@
 
     const categories = window.opener?.fd_ajax?.gallery || {};
     const select = document.getElementById('fd-category');
+    const picker = document.getElementById('fd-category-picker');
     const categoryNames = Object.keys(categories);
+
+    function getCategoryPreview(name) {
+      const imgs = categories[name] || [];
+      const previewItem = imgs.find(img => /category-preview\.(jpg|png|webp)$/i.test(img.url));
+      const target = previewItem || imgs[0];
+      return target ? (target.preview || target.url) : '';
+    }
+
     categoryNames.forEach(name => {
       const opt = document.createElement('option');
       opt.value = name;
       opt.textContent = name;
       select.appendChild(opt);
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.dataset.category = name;
+      const previewUrl = getCategoryPreview(name);
+      if (previewUrl) {
+        const img = document.createElement('img');
+        img.src = previewUrl;
+        img.alt = name;
+        img.style.maxWidth = '40px';
+        img.style.maxHeight = '40px';
+        btn.appendChild(img);
+      }
+      const span = document.createElement('span');
+      span.textContent = name;
+      btn.appendChild(span);
+      btn.addEventListener('click', () => renderWithCategory(name));
+      picker.appendChild(btn);
     });
 
     function buildGallery(name) {
-      return (categories[name] || []).map(img => ({
-        originalUrl: img.url,
-        previewUrl: img.preview || img.url
-      }));
+      return (categories[name] || [])
+        .filter(img => !/category-preview\.(jpg|png|webp)$/i.test(img.url))
+        .map(img => ({
+          originalUrl: img.url,
+          previewUrl: img.preview || img.url
+        }));
     }
 
     const { TABS, TOOLS } = window.FilerobotImageEditor;
