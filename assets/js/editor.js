@@ -11,7 +11,7 @@ jQuery(function($) {
       if (event.data.type === 'designSaved') {
         $('#fd-design-url').val(event.data.url);
         alert('Dizajn uložený!');
-        $('form.cart').submit();
+        $('.single_add_to_cart_button').trigger('click');
         window.removeEventListener('message', listener);
       }
     };
