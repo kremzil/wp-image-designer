@@ -25,48 +25,62 @@ function fd_list_files($dir) {
     return $files;
 }
 
+
+/**
+ * Collect categories and images from base directory.
+ *
+ * @param string $base_dir
+ * @param string $base_url
+ * @param array  $gallery
+ * @return array
+ */
+function fd_collect_clipart_categories($base_dir, $base_url, $gallery = []) {
+    if (!is_dir($base_dir)) {
+        return $gallery;
+    }
+
+    $dirs = glob(trailingslashit($base_dir) . '*', GLOB_ONLYDIR);
+    if ($dirs) {
+        foreach ($dirs as $dir) {
+            $category = basename($dir);
+            foreach (fd_list_files($dir) as $file) {
+                $url = trailingslashit($base_url) . $category . '/' . basename($file);
+                $gallery[$category][] = [
+                    'url'     => $url,
+                    'preview' => $url,
+                ];
+            }
+        }
+    } else {
+        $items = [];
+        foreach (fd_list_files($base_dir) as $file) {
+            $url = trailingslashit($base_url) . basename($file);
+            $items[] = [
+                'url'     => $url,
+                'preview' => $url,
+            ];
+        }
+        if ($items) {
+            $gallery['default'] = array_merge($gallery['default'] ?? [], $items);
+        }
+    }
+
+    return $gallery;
+}
 /**
  * Generate gallery array for Filerobot editor.
  */
 function fd_get_clipart_gallery() {
     $gallery = [];
 
-    $builtin = [
-        [
-            'path' => FD_PLUGIN_PATH . 'assets/cliparts/icons',
-            'url'  => plugins_url('assets/cliparts/icons', __FILE__),
-        ],
-        [
-            'path' => FD_PLUGIN_PATH . 'assets/cliparts/backgrounds',
-            'url'  => plugins_url('assets/cliparts/backgrounds', __FILE__),
-        ],
-    ];
+    $builtin_base = FD_PLUGIN_PATH . 'assets/cliparts';
+    $builtin_url  = plugins_url('assets/cliparts', __FILE__);
+    $gallery      = fd_collect_clipart_categories($builtin_base, $builtin_url, $gallery);
 
     $upload = wp_upload_dir();
-    $custom = [
-        [
-            'path' => trailingslashit($upload['basedir']) . 'wp-image-designer/cliparts/icons',
-            'url'  => trailingslashit($upload['baseurl']) . 'wp-image-designer/cliparts/icons',
-        ],
-        [
-            'path' => trailingslashit($upload['basedir']) . 'wp-image-designer/cliparts/backgrounds',
-            'url'  => trailingslashit($upload['baseurl']) . 'wp-image-designer/cliparts/backgrounds',
-        ],
-    ];
-
-    foreach (array_merge($builtin, $custom) as $set) {
-        if (!is_dir($set['path'])) {
-            continue;
-        }
-
-        foreach (fd_list_files($set['path']) as $file) {
-            $url = $set['url'] . '/' . basename($file);
-            $gallery[] = [
-                'originalUrl' => $url,
-                'previewUrl'  => $url
-            ];
-        }
-    }
+    $custom_base = trailingslashit($upload['basedir']) . 'wp-image-designer/cliparts';
+    $custom_url  = trailingslashit($upload['baseurl']) . 'wp-image-designer/cliparts';
+    $gallery     = fd_collect_clipart_categories($custom_base, $custom_url, $gallery);
 
     return $gallery;
 }
