@@ -10,6 +10,7 @@
   </style>
 </head>
 <body>
+  <select id="fd-category" style="position:absolute;z-index:1000;top:10px;left:10px;"></select>
   <div id="editor_container"></div>
 
   <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
@@ -17,63 +18,64 @@
     const params = new URLSearchParams(location.search);
     const imageUrl = params.get('image');
 
-    const gallery = window.opener?.fd_ajax?.gallery || [];
-
-    const { TABS, TOOLS } = window.FilerobotImageEditor;
-
-    const editor = new window.FilerobotImageEditor(document.getElementById('editor_container'), {
-      source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
-
-      toolsIds: ['Watermark', 'Image'], // ✅ включаем оба инструмента
-      tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
-      defaultTabId: TABS.ANNOTATE,
-      defaultToolId: TOOLS.IMAGE, // ✅ открываем инструмент Image по умолчанию
-
-Image: {
-    gallery: (gallery || [])
-        .filter(img => img.originalUrl)
-        .map(img => ({
-            originalUrl: img.originalUrl,
-            previewUrl: img.previewUrl || img.originalUrl // защита на случай отсутствия previewUrl
-        }))
-},
-      
-
-      // 🔄 Галерея для Watermark тоже можно оставить, если хочешь
-      Watermark: {
-        gallery: gallery.map(img => ({
-          url: img.originalUrl,
-          preview: img.previewUrl
-        }))
-      },
-
-      onSave: (imageData) => {
-        fetch(window.opener.fd_ajax.ajax_url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            action: 'fd_save_design',
-            nonce: window.opener.fd_ajax.nonce,
-            image: imageData.imageBase64
-          })
-        })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success) {
-            window.opener.postMessage({ type: 'designSaved', url: data.data.url }, location.origin);
-            window.close();
-          } else {
-            alert('Chyba pri ukladaní.');
-          }
-        });
-      },
-
-      onClose: () => {
-        window.close();
-      }
+    const categories = window.opener?.fd_ajax?.gallery || {};
+    const select = document.getElementById('fd-category');
+    const categoryNames = Object.keys(categories);
+    categoryNames.forEach(name => {
+      const opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
     });
 
-    editor.render();
+    function buildGallery(name) {
+      return (categories[name] || []).map(img => ({
+        originalUrl: img.url,
+        previewUrl: img.preview || img.url
+      }));
+    }
+
+    const { TABS, TOOLS } = window.FilerobotImageEditor;
+    const editor = new window.FilerobotImageEditor(document.getElementById('editor_container'), {});
+
+    function renderWithCategory(name) {
+      const gal = buildGallery(name);
+      editor.render({
+        source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
+        toolsIds: ['Watermark', 'Image'],
+        tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
+        defaultTabId: TABS.ANNOTATE,
+        defaultToolId: TOOLS.IMAGE,
+        Image: { gallery: gal },
+        Watermark: { gallery: gal.map(g => ({ url: g.originalUrl, preview: g.previewUrl })) },
+        onSave: (imageData) => {
+          fetch(window.opener.fd_ajax.ajax_url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              action: 'fd_save_design',
+              nonce: window.opener.fd_ajax.nonce,
+              image: imageData.imageBase64
+            })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              window.opener.postMessage({ type: 'designSaved', url: data.data.url }, location.origin);
+              window.close();
+            } else {
+              alert('Chyba pri ukladaní.');
+            }
+          });
+        },
+        onClose: () => {
+          window.close();
+        }
+      });
+    }
+
+    select.addEventListener('change', e => renderWithCategory(e.target.value));
+    renderWithCategory(categoryNames[0] || '');
   </script>
 </body>
 </html>
