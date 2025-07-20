@@ -1,0 +1,21 @@
+.fd-backgrounds-block {
+  margin-top: 10px;
+}
+.fd-backgrounds-block h4 {
+  margin: 0 0 5px;
+}
+.fd-backgrounds-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.fd-background-thumb {
+  width: 100px;
+  height: 60px;
+  background-size: cover;
+  background-position: center;
+  cursor: pointer;
+}
+.fd-background-thumb:hover {
+  border: 2px solid #0073aa;
+}

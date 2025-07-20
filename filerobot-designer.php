@@ -85,6 +85,19 @@ function fd_get_clipart_gallery() {
     return $gallery;
 }
 
+/**
+ * Return list of background image URLs.
+ */
+function fd_get_background_images() {
+    $dir = FD_PLUGIN_PATH . 'background';
+    $url = plugins_url('background', __FILE__);
+    $urls = [];
+    foreach (fd_list_files($dir) as $file) {
+        $urls[] = trailingslashit($url) . basename($file);
+    }
+    return $urls;
+}
+
 
 // Add product setting to enable the designer
 add_action('woocommerce_product_options_general_product_data', function() {
@@ -108,14 +121,17 @@ add_action('wp_enqueue_scripts', function() {
     if (is_product()) {
         $enabled = get_post_meta(get_the_ID(), '_fd_enable_designer', true);
         if ($enabled === 'yes') {
-            $image_url = esc_url(get_the_post_thumbnail_url(get_the_ID(), 'full'));
+            $param = isset($_GET['image']) ? esc_url_raw(wp_unslash($_GET['image'])) : '';
+            $image_url = $param ? $param : esc_url(get_the_post_thumbnail_url(get_the_ID(), 'full'));
+            wp_enqueue_style('fd-editor', FD_PLUGIN_URL . 'assets/css/editor.css', [], FD_VERSION);
             wp_enqueue_script('fd-editor', FD_PLUGIN_URL . 'assets/js/editor.js', ['jquery'], FD_VERSION, true);
             wp_localize_script('fd-editor', 'fd_ajax', [
-                'ajax_url'  => admin_url('admin-ajax.php'),
-                'nonce'     => wp_create_nonce('fd_nonce'),
-                'image_url' => $image_url,
-                'popup_url' => esc_url(FD_PLUGIN_URL . 'popup/index.html'),
-                'gallery'   => fd_get_clipart_gallery(),
+                'ajax_url'   => admin_url('admin-ajax.php'),
+                'nonce'      => wp_create_nonce('fd_nonce'),
+                'image_url'  => $image_url,
+                'popup_url'  => esc_url(FD_PLUGIN_URL . 'popup/index.html'),
+                'gallery'    => fd_get_clipart_gallery(),
+                'backgrounds'=> fd_get_background_images(),
             ]);
         }
     }

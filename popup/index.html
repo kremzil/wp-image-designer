@@ -17,39 +17,27 @@
     const params = new URLSearchParams(location.search);
     const imageUrl = params.get('image');
 
-    const categories = window.opener?.fd_ajax?.gallery || {};
-    const categoryNames = Object.keys(categories);
-
-    function getCategoryPreview(name) {
-      const imgs = categories[name] || [];
-      const previewItem = imgs.find(img => /category-preview\.(jpg|png|webp)$/i.test(img.url));
-      const target = previewItem || imgs[0];
-      return target ? (target.preview || target.url) : '';
-    }
-
-
-    function buildGallery(name) {
-      return (categories[name] || [])
-        .filter(img => !/category-preview\.(jpg|png|webp)$/i.test(img.url))
-        .map(img => ({
-          originalUrl: img.url,
-          previewUrl: img.preview || img.url
-        }));
-    }
+    const galleryObj = window.opener?.fd_ajax?.gallery || {};
+    const gallery = Object.values(galleryObj)
+      .flat()
+      .filter(img => !/category-preview\.(jpg|png|webp)$/i.test(img.url))
+      .map(img => ({
+        originalUrl: img.url,
+        previewUrl: img.preview || img.url
+      }));
 
     const { TABS, TOOLS } = window.FilerobotImageEditor;
     const editor = new window.FilerobotImageEditor(document.getElementById('editor_container'), {});
 
-    function renderWithCategory(name) {
-      const gal = buildGallery(name);
+    function renderEditor() {
       editor.render({
         source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
         toolsIds: ['Watermark', 'Image'],
         tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
         defaultTabId: TABS.ANNOTATE,
         defaultToolId: TOOLS.IMAGE,
-        Image: { gallery: gal },
-        Watermark: { gallery: gal.map(g => ({ url: g.originalUrl, preview: g.previewUrl })) },
+        Image: { gallery: gallery },
+        Watermark: { gallery: gallery.map(g => ({ url: g.originalUrl, preview: g.previewUrl })) },
         onSave: (imageData) => {
           fetch(window.opener.fd_ajax.ajax_url, {
             method: 'POST',
@@ -76,57 +64,7 @@
       });
     }
 
-    function buildCategoryButtons(container) {
-      container.innerHTML = '';
-      categoryNames.forEach(name => {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.dataset.category = name;
-        const previewUrl = getCategoryPreview(name);
-        if (previewUrl) {
-          const img = document.createElement('img');
-          img.src = previewUrl;
-          img.alt = name;
-          img.style.maxWidth = '40px';
-          img.style.maxHeight = '40px';
-          btn.appendChild(img);
-        }
-        const span = document.createElement('span');
-        span.textContent = name;
-        btn.appendChild(span);
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          renderWithCategory(name);
-        });
-        container.appendChild(btn);
-      });
-    }
-
-    const menuObserver = new MutationObserver(mutations => {
-      mutations.forEach(mutation => {
-        mutation.addedNodes.forEach(node => {
-          if (node.nodeType === 1 && node.classList.contains('SfxMenu-root')) {
-            const menu = node.querySelector('.FIE_image-tool-add-option-menu');
-            if (menu) {
-              let holder = menu.querySelector('.fd-popup-category-picker');
-              if (!holder) {
-                holder = document.createElement('div');
-                holder.className = 'fd-popup-category-picker';
-                holder.style.display = 'flex';
-                holder.style.gap = '5px';
-                holder.style.flexWrap = 'wrap';
-                holder.style.padding = '8px';
-                menu.appendChild(holder);
-              }
-              buildCategoryButtons(holder);
-            }
-          }
-        });
-      });
-    });
-    menuObserver.observe(document.body, { childList: true, subtree: true });
-
-    renderWithCategory(categoryNames[0] || '');
+    renderEditor();
   </script>
 </body>
 </html>
