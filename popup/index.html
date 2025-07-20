@@ -10,8 +10,6 @@
   </style>
 </head>
 <body>
-  <div id="fd-category-picker" class="fd-category-picker" style="position:absolute;z-index:1000;top:10px;left:10px;display:flex;gap:5px;"></div>
-  <select id="fd-category" style="position:absolute;z-index:1000;top:10px;left:10px;opacity:0;pointer-events:none;"></select>
   <div id="editor_container"></div>
 
   <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
@@ -20,8 +18,6 @@
     const imageUrl = params.get('image');
 
     const categories = window.opener?.fd_ajax?.gallery || {};
-    const select = document.getElementById('fd-category');
-    const picker = document.getElementById('fd-category-picker');
     const categoryNames = Object.keys(categories);
 
     function getCategoryPreview(name) {
@@ -31,30 +27,6 @@
       return target ? (target.preview || target.url) : '';
     }
 
-    categoryNames.forEach(name => {
-      const opt = document.createElement('option');
-      opt.value = name;
-      opt.textContent = name;
-      select.appendChild(opt);
-
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.dataset.category = name;
-      const previewUrl = getCategoryPreview(name);
-      if (previewUrl) {
-        const img = document.createElement('img');
-        img.src = previewUrl;
-        img.alt = name;
-        img.style.maxWidth = '40px';
-        img.style.maxHeight = '40px';
-        btn.appendChild(img);
-      }
-      const span = document.createElement('span');
-      span.textContent = name;
-      btn.appendChild(span);
-      btn.addEventListener('click', () => renderWithCategory(name));
-      picker.appendChild(btn);
-    });
 
     function buildGallery(name) {
       return (categories[name] || [])
@@ -104,7 +76,56 @@
       });
     }
 
-    select.addEventListener('change', e => renderWithCategory(e.target.value));
+    function buildCategoryButtons(container) {
+      container.innerHTML = '';
+      categoryNames.forEach(name => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.dataset.category = name;
+        const previewUrl = getCategoryPreview(name);
+        if (previewUrl) {
+          const img = document.createElement('img');
+          img.src = previewUrl;
+          img.alt = name;
+          img.style.maxWidth = '40px';
+          img.style.maxHeight = '40px';
+          btn.appendChild(img);
+        }
+        const span = document.createElement('span');
+        span.textContent = name;
+        btn.appendChild(span);
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          renderWithCategory(name);
+        });
+        container.appendChild(btn);
+      });
+    }
+
+    const menuObserver = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        mutation.addedNodes.forEach(node => {
+          if (node.nodeType === 1 && node.classList.contains('SfxMenu-root')) {
+            const menu = node.querySelector('.FIE_image-tool-add-option-menu');
+            if (menu) {
+              let holder = menu.querySelector('.fd-popup-category-picker');
+              if (!holder) {
+                holder = document.createElement('div');
+                holder.className = 'fd-popup-category-picker';
+                holder.style.display = 'flex';
+                holder.style.gap = '5px';
+                holder.style.flexWrap = 'wrap';
+                holder.style.padding = '8px';
+                menu.appendChild(holder);
+              }
+              buildCategoryButtons(holder);
+            }
+          }
+        });
+      });
+    });
+    menuObserver.observe(document.body, { childList: true, subtree: true });
+
     renderWithCategory(categoryNames[0] || '');
   </script>
 </body>
