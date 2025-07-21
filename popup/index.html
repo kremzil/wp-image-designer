@@ -13,7 +13,13 @@
   <select id="fd-category" style="position:absolute;z-index:1000;top:10px;left:10px;"></select>
   <div id="editor_container"></div>
 
-  <script src="https://scaleflex.cloudimg.io/v7/plugins/filerobot-image-editor/latest/filerobot-image-editor.min.js"></script>
+  <!-- Подключаем React и ReactDOM -->
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Локальная сборка редактора -->
+  <script src="../dist/filerobot-image-editor.min.js"></script>
+
   <script>
     const params = new URLSearchParams(location.search);
     const imageUrl = params.get('image');
@@ -35,43 +41,44 @@
       }));
     }
 
-    const { TABS, TOOLS } = window.FilerobotImageEditor;
-    const editor = new window.FilerobotImageEditor(document.getElementById('editor_container'), {});
+    const { default: FilerobotImageEditor, TABS, TOOLS } = window.FilerobotImageEditor;
 
     function renderWithCategory(name) {
       const gal = buildGallery(name);
-      editor.render({
-        source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
-        toolsIds: ['Watermark', 'Image'],
-        tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
-        defaultTabId: TABS.ANNOTATE,
-        defaultToolId: TOOLS.IMAGE,
-        Image: { gallery: gal },
-        Watermark: { gallery: gal.map(g => ({ url: g.originalUrl, preview: g.previewUrl })) },
-        onSave: (imageData) => {
-          fetch(window.opener.fd_ajax.ajax_url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({
-              action: 'fd_save_design',
-              nonce: window.opener.fd_ajax.nonce,
-              image: imageData.imageBase64
+
+      ReactDOM.render(
+        React.createElement(FilerobotImageEditor, {
+          source: imageUrl || 'https://scaleflex.airstore.io/demo/stephen-walker-unsplash.jpg',
+          toolsIds: ['Watermark', 'Image'],
+          tabsIds: [TABS.ANNOTATE, TABS.WATERMARK],
+          defaultTabId: TABS.ANNOTATE,
+          defaultToolId: TOOLS.IMAGE,
+          Image: { gallery: gal },
+          Watermark: { gallery: gal.map(g => ({ url: g.originalUrl, preview: g.previewUrl })) },
+          onSave: (imageData) => {
+            fetch(window.opener.fd_ajax.ajax_url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                action: 'fd_save_design',
+                nonce: window.opener.fd_ajax.nonce,
+                image: imageData.imageBase64
+              })
             })
-          })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              window.opener.postMessage({ type: 'designSaved', url: data.data.url }, location.origin);
-              window.close();
-            } else {
-              alert('Chyba pri ukladaní.');
-            }
-          });
-        },
-        onClose: () => {
-          window.close();
-        }
-      });
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                window.opener.postMessage({ type: 'designSaved', url: data.data.url }, location.origin);
+                window.close();
+              } else {
+                alert('Chyba pri ukladaní.');
+              }
+            });
+          },
+          onClose: () => window.close()
+        }),
+        document.getElementById('editor_container')
+      );
     }
 
     select.addEventListener('change', e => renderWithCategory(e.target.value));
